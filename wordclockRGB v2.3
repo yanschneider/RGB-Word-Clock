@@ -1,0 +1,661 @@
+#include "FastLED.h"
+
+// How many leds in your strip?
+#define NUM_LEDS 114
+
+// For led chips like Neopixels, which have a data line, ground, and power, you just
+// need to define DATA_PIN.  For led chipsets that are SPI based (four wires - data, clock,
+// ground, and power), like the LPD8806 define both DATA_PIN and CLOCK_PIN
+#define DATA_PIN 6
+#define LEDSPerLine 11
+#define brightnessSensor 4
+
+//get time from DCF receiver
+#include "DCF77.h"
+#include "Time.h"
+
+#define DCF_PIN 2           // Connection pin to DCF 77 device
+#define DCF_INTERRUPT 0    // Interrupt number associated with pin
+
+bool debugTime = false;
+
+time_t time;
+// Non-inverted input on pin DCF_PIN
+DCF77 DCF = DCF77(DCF_PIN, DCF_INTERRUPT, true);
+
+
+
+// Define the array of leds
+CRGB leds[NUM_LEDS];
+
+int brightness = 30;
+int counter = 0;
+int oldBrightness = 0;
+int tempCounter = 0;
+
+int  hourTemp=9, minuteTemp=30, secondTemp=0;
+int globalR=-1;
+int globalG =-1;
+int globalB = -1;
+
+int line1[LEDSPerLine];
+int line2[LEDSPerLine];
+int line3[LEDSPerLine];
+int line4[LEDSPerLine];
+int line5[LEDSPerLine];
+int line6[LEDSPerLine];
+int line7[LEDSPerLine];
+int line8[LEDSPerLine];
+int line9[LEDSPerLine];
+int line10[LEDSPerLine];
+
+char ESIST[5] = {1,2,4,5,6};
+char FUENFMINUTEN[4]={8,9,10,11};
+char ZEHNMINUTEN[4]={23,22,21,20};
+char ZWANZIG[7]={13,14,15,16,17,18,19};
+char HALB[4]={46,47,48,49};
+char VIERTEL[7]={28,29,30,31,32,33,34};
+char VOR[3]{43,44,45};
+char NACH[4]{35,36,37,38};
+char EINS[4]{67,66,65,64};
+char EIN[4]{67,66,65};
+char ZWEI[4]{57,58,59,60};
+char DREI[4]={24,25,26,27};
+char VIER[4]{78,77,76,75};
+char FUENFSTUNDEN[4]{56,55,54,53};
+char SECHS[5]{89,88,87,86,85};
+char SIEBEN[6]{90,91,92,93,94,95};
+char ACHT[4]{79,80,81,82};
+char NEUN[4]{106,107,108,109};
+char ZEHNSTUNDEN[4]{112,111,110,109};
+char ELF[3]{51,52,53};
+char ZWOELF[5]{100,99,98,97,96};
+char OBENLINKS[1]={0};
+char OBENRECHTS[1]={12};
+char UNTENRECHTS[1]={101};
+char UNTENLINKS[1]={113};
+char UHR[3]={102,103,104};
+
+
+char A[52] = { 3,4,20,21,26,27,42,43,48,49,64,65,70,71,86,87,81,82,92,93,97,98,104,105,109,110,76,75,59,61,54,53,37,38,32,31,15,16,9,8,7,6,5,17,18,19,50,51,52,61,62,63 };
+char E[48] = { 74,73,57,58,52,51,35,36,30,29,13,14,8,7,6,5,4,15,16,17,79,80,95,96,48,49,50,59,60,61,92,93,94,101,102,103,104,105,2,3,19,18,47,62,90,91,107,106 }; //needs to be adjusted
+char J[32] = {2,3,18,19,24,25,40,41,46,47,62,63,68,69,84,85,79,80,90,91,92,93,94,95,96,101,102,103,104,105,106,107};//needs to be adjusted
+char L[28] = { 4,5,19,20,27,28,41,42,49,50,63,64,71,72,85,86,93,94,95,96,97,98,104,105,106,107,108,109 };
+char N[54] = { 2,3,18,19,24,25,40,41,46,47,62,63,68,69,84,85,79,80,90,91,95,96,101,102,106,107,74,73,57,58,52,51,35,36,30,29,13,14,8,15,28,38,37,48,49,50,59,60,61,71,70,83,92,8 };//needs to be adjusted
+char O[52] = { 3,4,20,21,26,27,42,43,48,49,64,65,70,71,86,87,81,82,92,93,94,95,96,97,98,104,105,106,107,108,109,110,76,75,59,60,54,53,37,38,32,31,15,16,9,8,7,6,5,17,18,19 };
+
+void setup() {
+
+	
+
+	Serial.begin(115200);
+
+	
+  pinMode(DCF_PIN,INPUT);
+  
+  DCF.Start();
+  Serial.println("Waiting for DCF77 time ... ");
+  Serial.println("It will take at least 2 minutes before a first time update.");
+
+   Serial.println("setup complete");
+
+	for (int i = 0; i < 11; i++) {
+		line1[i] = i;
+		line2[10-i] = LEDSPerLine+i;
+		line3[i] = 2*LEDSPerLine + i;
+		line4[10 - i] = 3 * LEDSPerLine + i;
+		line5[i] = 4 * LEDSPerLine + i;
+		line6[10 - i] = 5 * LEDSPerLine + i;
+		line7[i] = 6 * LEDSPerLine + i;
+		line8[10 - i] = 7 * LEDSPerLine + i;
+		line9[i] = 8 * LEDSPerLine + i;
+		line10[10 - i] = 9 * LEDSPerLine + i;
+	
+	}
+
+
+	FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);
+
+	// initial RGB flash
+	LEDS.showColor(CRGB(brightness, 0, 0));
+	delay(500);
+	LEDS.showColor(CRGB(0, brightness, 0));
+	delay(500);
+	LEDS.showColor(CRGB(0, 0, brightness));
+	delay(500);
+	LEDS.showColor(CRGB(0, 0, 0));
+
+
+
+
+}
+
+bool buttonPressed = false;
+int buttonCounter = 0;
+
+void loop() {
+
+	brightness = analogRead(brightnessSensor) / 4;
+
+  if(oldBrightness - brightness > 5){
+    Serial.println("BUTTON");
+    buttonPressed = true;
+    buttonCounter++;
+    Serial.println(buttonCounter);
+    if(buttonCounter > 1000){
+      buttonPressed = false;
+    }
+  }
+  else{
+     if(buttonPressed){
+      changeColor();
+     }
+     buttonCounter = 0;
+    buttonPressed = false;
+  }
+
+
+  if(counter %1000 == 0 && !buttonPressed){
+  oldBrightness = brightness;
+  }
+  
+
+   if(brightness<30 && !buttonPressed ){
+    brightness = 30;
+  }
+
+
+
+if(brightness > 100){
+  brightness = 100;
+}
+  
+  FastLED.setBrightness(brightness);
+
+	if(counter == 20000){
+	time_t DCFtime = DCF.getTime(); // Check if new DCF77 time is available
+	if (DCFtime != 0) {
+		Serial.println("Time is updated");
+		setTime(DCFtime);
+
+	}
+   counter = 0;
+	}
+  counter++;
+ 
+  secondTemp = second();
+    minuteTemp = minute();
+    hourTemp = hour();
+
+   //digitalClockDisplay();
+
+   
+
+    if (counter % 1000 == 0) 
+    {
+      displaytime();
+    }
+
+	/*
+	for (int i = 0; i < NUM_LEDS; i++) {
+		leds[i].setRGB(0, 50, 0);
+		FastLED.show();
+		delay(50);
+		LEDS.clear();
+	}
+	*/
+
+
+		
+	/*
+	showLetter(J, sizeof(J) / sizeof(J[0]),500);
+	showLetter(O, sizeof(O) / sizeof(O[0]), 500);
+	showLetter(A, sizeof(A) / sizeof(A[0]), 500);
+	showLetter(N, sizeof(N) / sizeof(N[0]), 500);
+	showLetter(N, sizeof(N) / sizeof(N[0]), 500);
+	showLetter(E, sizeof(E) / sizeof(E[0]), 500);
+	*/
+
+  
+	}
+
+ void changeColor(){
+  Serial.println("change color");
+  Serial.println(globalR);
+  Serial.println(globalG);
+  Serial.println(globalB);
+
+  //starting color -> red
+  if(globalR == -1 && globalB == -1 && globalG == -1){
+    globalR = 70;
+    globalG = 0;
+    globalB = 0;
+    Serial.println("set color to red");
+    return;
+  }
+
+ //White -> Yellow
+  if(globalR == 70 && globalG == 70 && globalB == 70){
+    globalR = 70;
+    globalG = 70;
+    globalB = 70;
+    return;
+  }
+
+  //Yellow -> Lime
+  if(globalR == 70 && globalG == 70 && globalB == 0){
+    globalR = 35;
+    globalG = 70;
+    globalB = 0;
+    return;
+  }
+
+
+    //Lime -> Green
+  if(globalR == 35 && globalG == 70 && globalB == 0){
+    globalR = 0;
+    globalG = 35;
+    globalB = 0;
+    return;
+  }
+
+    //Green -> Aqua
+  if(globalR == 0 && globalG == 35 && globalB == 0){
+    globalR = 0;
+    globalG = 70;
+    globalB = 70;
+    return;
+  }
+
+    //Aqua -> Blue
+  if(globalR == 0 && globalG == 70 && globalB == 70){
+    globalR = 0;
+    globalG = 35;
+    globalB = 70;
+    return;
+  }
+
+
+    //Blue -> Fuchsia
+  if(globalR == 0 && globalG == 35 && globalB == 70){
+    globalR = 70;
+    globalG = 0;
+    globalB = 70;
+    return;
+  }
+
+
+
+    //Fuchsia -> Purple
+  if(globalR == 70 && globalG == 0 && globalB == 70){
+    globalR = 35;
+    globalG = 0;
+    globalB = 35;
+    return;
+  }
+  
+  //Purple -> Red
+  if(globalR == 35 && globalG == 0 &&  globalB == 35){
+    globalR = 70;
+    globalG = 0;
+    globalB = 0;
+    return;
+  }
+  
+ //Red -> White
+  if(globalR == 70 && globalG == 0 &&  globalB == 0){
+    globalR = 70;
+    globalG = 70;
+    globalB = 70;
+    return;
+  }
+  
+  
+  delay(1000);
+ }
+
+void setMultipleLEDs(char* array,int size){
+  int r,g,b = brightness;
+
+if(globalR != -1){
+  r = globalR;
+}
+if(globalG != -1){
+  g = globalG;
+}
+if(globalB != -1){
+  b = globalB;
+}
+
+  for(int i=0;i<size;i++){
+     leds[array[i]].setRGB(r, g, b);
+   }
+
+}
+
+void blinkSingleLED(int i) {
+
+	
+	/*
+	int r = random(brightness);
+	int g = random(brightness);
+	int b = random(brightness);
+	*/
+
+	int r = brightness;
+	int g = brightness;
+	int b = brightness;
+
+		leds[i].setRGB(r, g, b);
+	
+
+	
+
+
+	FastLED.show();
+	delay(500);
+	LEDS.showColor(CRGB(0, 0, 0));
+	LEDS.clear();
+}
+
+void showLetter(char *array,int size) {
+/*
+	int r = random(brightness);
+	int g = random(brightness);
+	int b = random(brightness);
+	*/
+
+	int r = brightness;
+	int g = brightness;
+	int b = brightness;
+
+	for (int i = 0; i < size; i++) {
+		leds[array[i]].setRGB(r, g, b);
+	}
+	FastLED.show();
+}
+
+
+
+
+
+void displaytime(void){
+
+  LEDS.clear();
+
+  
+  if( (minuteTemp>=0) && ( minuteTemp <5) || (minuteTemp> 29) && (minuteTemp < 35)) {
+  setMultipleLEDs(ESIST,5);
+  if(debugTime)Serial.println("ES IST");
+  }
+  
+  if((minuteTemp%5 != 0)){
+    
+    if( (minuteTemp%5 == 1)){
+       setMultipleLEDs(OBENLINKS,1);
+      if(debugTime)Serial.println("oben links ");    
+    }
+    
+     if( (minuteTemp%5 == 2)){
+      setMultipleLEDs(OBENLINKS,1);
+      if(debugTime)Serial.println("oben links ")  ;
+      setMultipleLEDs(OBENRECHTS,1);
+      if(debugTime)Serial.println("OBENRECHTS ");  
+    }
+    
+        if( (minuteTemp%5 == 3)){
+      setMultipleLEDs(OBENLINKS,1);
+      if(debugTime)Serial.println("OBENLINKS ") ; 
+      setMultipleLEDs(OBENRECHTS,1);
+      if(debugTime)Serial.println("OBENRECHTS ")  ;
+      setMultipleLEDs(UNTENRECHTS,1);
+      if(debugTime)Serial.println("UNTENRECHTS ");
+    }
+    
+      if( (minuteTemp%5 == 4)){
+       setMultipleLEDs(OBENLINKS,1);
+      if(debugTime)Serial.println("OBENLINKS ") ; 
+      setMultipleLEDs(OBENRECHTS,1);
+      if(debugTime)Serial.println("OBENRECHTS ")  ;
+      setMultipleLEDs(UNTENRECHTS,1);
+      if(debugTime)Serial.println("UNTENRECHTS ");
+        setMultipleLEDs(UNTENLINKS,1);
+      if(debugTime)Serial.println("UNTENLINKS ");
+      
+    }
+    
+    
+    }
+    
+    
+    
+
+  // now we display the appropriate minuteTemp counter
+  if ((minuteTemp>4) && (minuteTemp<10)) { 
+   setMultipleLEDs(FUENFMINUTEN,4);
+    setMultipleLEDs(NACH,4);
+    if(debugTime)Serial.println("fuenfminuten nach ");
+  } 
+  if ((minuteTemp>9) && (minuteTemp<15)) { 
+     setMultipleLEDs(ZEHNMINUTEN,4); 
+    setMultipleLEDs(NACH,4);
+    if(debugTime)Serial.println("zehnminuten nach ");
+  }
+  if ((minuteTemp>14) && (minuteTemp<20)) {
+    setMultipleLEDs(VIERTEL,7);
+    setMultipleLEDs(NACH,4);
+      if(debugTime)Serial.println("viertel nach ");
+  }
+  if ((minuteTemp>19) && (minuteTemp<25)) { 
+    setMultipleLEDs(ZWANZIG,7); 
+    setMultipleLEDs(NACH,4);
+    if(debugTime)Serial.println("zwanzig nach ");
+  }
+  if ((minuteTemp>24) && (minuteTemp<30)) { 
+    setMultipleLEDs(FUENFMINUTEN,4); 
+    setMultipleLEDs(VOR,3);
+    setMultipleLEDs(HALB,4);
+    if(debugTime)Serial.println("fuenf vor halb  ");
+  }  
+  if ((minuteTemp>29) && (minuteTemp<35)) {
+    setMultipleLEDs(HALB,4);
+    if(debugTime)Serial.println("halb ");
+  }
+  if ((minuteTemp>34) && (minuteTemp<40)) { 
+    setMultipleLEDs(FUENFMINUTEN,4); 
+    setMultipleLEDs(NACH,4);
+    setMultipleLEDs(HALB,4);
+    if(debugTime)Serial.println("fünf nach halb ");
+  }  
+  if ((minuteTemp>39) && (minuteTemp<45)) { 
+    setMultipleLEDs(ZWANZIG,7); 
+    setMultipleLEDs(VOR,3);
+    if(debugTime)Serial.println("zwanzig vor ");
+  }
+  if ((minuteTemp>44) && (minuteTemp<50)) {
+    setMultipleLEDs(VIERTEL,7);
+    setMultipleLEDs(VOR,3);
+    if(debugTime)Serial.println("viertel vor ");
+  }
+  if ((minuteTemp>49) && (minuteTemp<55)) { 
+    setMultipleLEDs(ZEHNMINUTEN,4); 
+    setMultipleLEDs(VOR,3);
+    if(debugTime)Serial.println("zehnmninuten vor ");
+  } 
+  if (minuteTemp>54) { 
+    setMultipleLEDs(FUENFMINUTEN,4);
+    setMultipleLEDs(VOR,3);
+    if(debugTime)Serial.println("fuenfminuten vor  ");
+  }
+
+    switch (hourTemp) {
+    case 1: 
+    case 13:
+    if(minuteTemp > 24){
+      setMultipleLEDs(ZWEI,4);
+      if(debugTime)Serial.println("ZWEI");
+      
+    }
+    else{
+    
+    if(minuteTemp <5){
+      setMultipleLEDs(EIN,3);
+      if(debugTime)Serial.println("EIN");
+    }
+    else{
+      setMultipleLEDs(EINS,4); 
+      if(debugTime)Serial.println("EINS");
+    }
+    }
+    
+      break;
+    case 2: 
+    case 14:
+    if(minuteTemp > 24){
+        setMultipleLEDs(DREI,4);
+      if(debugTime)Serial.println("DREI");
+    }
+    else{
+        setMultipleLEDs(ZWEI,4); 
+      if(debugTime)Serial.println("ZWEI ");
+    }
+      break;
+    case 3: 
+    case 15:
+    if(minuteTemp > 24){
+      setMultipleLEDs(VIER,4);
+      if(debugTime)Serial.println("VIER");
+    }
+    else{
+      setMultipleLEDs(DREI,4); 
+      if(debugTime)Serial.println("DREI ");
+    }
+      break;
+      
+    case 4: 
+    case 16:
+     if(minuteTemp > 24){
+      setMultipleLEDs(FUENFSTUNDEN,4);
+      if(debugTime)Serial.println("FUENF");
+    }
+    else{
+      setMultipleLEDs(VIER,4); 
+      if(debugTime)Serial.println("VIER ");
+    }
+      break;
+    case 5: 
+    case 17:
+   if(minuteTemp > 24){
+      setMultipleLEDs(SECHS,4);
+      if(debugTime)Serial.println("SECHS");
+    }
+    else{
+
+    
+      setMultipleLEDs(FUENFSTUNDEN,4); 
+      if(debugTime)Serial.println("FUENF ");
+    }
+      break;
+    case 6: 
+    case 18:
+     if(minuteTemp > 24){
+      setMultipleLEDs(SIEBEN,6);
+      if(debugTime)Serial.println("SIEBEN");
+    }
+    else{
+      setMultipleLEDs(SECHS,5); 
+      if(debugTime)Serial.println("SECHS ");
+    }
+      break;
+    case 7: 
+    case 19:
+     if(minuteTemp > 24){
+      setMultipleLEDs(ACHT,4);
+      if(debugTime)Serial.println("ACHT");
+    }
+    else{
+      setMultipleLEDs(SIEBEN,6); 
+      if(debugTime)Serial.println("SIEBEN ");
+    }
+      break;
+    case 8: 
+    case 20:
+     if(minuteTemp > 24){
+      setMultipleLEDs(NEUN,4);
+      if(debugTime)Serial.println("NEUN");
+    }
+    else{
+      setMultipleLEDs(ACHT,4); 
+      if(debugTime)Serial.println("ACHT ");
+    }
+      break;
+    case 9: 
+    case 21:
+     if(minuteTemp > 24){
+      setMultipleLEDs(ZEHNSTUNDEN,4);
+      if(debugTime)Serial.println("ZEHN");
+    }
+    else{
+      setMultipleLEDs(NEUN,4); 
+      if(debugTime)Serial.println("NEUN ");
+    }
+      break;
+    case 10:
+    case 22: 
+     if(minuteTemp > 24){
+      setMultipleLEDs(ELF,3);
+      if(debugTime)Serial.println("ELF");
+    }
+    else{
+    setMultipleLEDs(ZEHNSTUNDEN,4);
+      if(debugTime)Serial.println("ZEHN");
+    }
+      break;
+    case 11:
+    case 23: 
+    if(minuteTemp > 24){
+      setMultipleLEDs(ZWOELF,5);
+      if(debugTime)Serial.println("ZWOELF");
+    }
+    else{
+      setMultipleLEDs(ELF,3);
+      if(debugTime)Serial.println("ELF ");
+    }
+      break;
+    case 12: 
+     if(minuteTemp > 24){
+      setMultipleLEDs(EINS,4);
+      if(debugTime)Serial.println("EINS");
+    }
+    else{
+      setMultipleLEDs(ZWOELF,5); 
+      if(debugTime)Serial.println("ZWOELF ");
+    }
+  break;
+        case 0: 
+     if(minuteTemp > 24){
+      setMultipleLEDs(EINS,4);
+      if(debugTime)Serial.println("EINS");
+    }
+    else{
+      setMultipleLEDs(ZWOELF,5); 
+      if(debugTime)Serial.println("ZWOELF ");
+    }
+      break;
+
+}
+        
+   
+   if( (minuteTemp <5) ){   
+  setMultipleLEDs(UHR,3);
+  if(debugTime)Serial.println("UHR");
+    
+    }
+    
+    FastLED.show();
+
+}
+
+
+  
+
